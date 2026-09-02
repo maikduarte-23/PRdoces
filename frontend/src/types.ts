@@ -77,9 +77,20 @@ export interface SystemSettings {
   logo?: string | null;
   color?: string | null;
   companyName?: string;
+  tagline?: string;
   pixKey?: string;
+  pixReceiverName?: string;
   companyPhone?: string;
   companyInstagram?: string;
+  pickupAddress?: string;
   defaultDeliveryFee?: string | number;
   dietaryWarning?: string;
+  defaultDepositPercentage?: string | number;
+  budgetValidityDays?: string | number;
+  minLeadTimeDays?: string | number;
+  defaultDailyOrderLimit?: string | number;
+  receiptThankYouMessage?: string;
+  enableStockAlerts?: string | boolean;
+  soundAlerts?: string | boolean;
+  [key: string]: any;
 }
