@@ -29,13 +29,12 @@ import toast from 'react-hot-toast';
 import FinanceOrderCard from './FinanceOrderCard';
 import PaginationControls from './forms/PaginationControls';
 import BudgetItemCard from './forms/BudgetItemCard';
+import { useAppData } from '../context/AppDataContext';
 
 export default function FinanceModule({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+  const { customers, menuProducts, inventory, settings, expenses, setExpenses } = useAppData();
   const [activeTab, setActiveTab] = useState<'recebimentos' | 'despesas'>('recebimentos');
   const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'waiting_deposit' | 'pending_final' | 'completed'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,10 +44,12 @@ export default function FinanceModule({ onNavigate }: { onNavigate?: (tab: strin
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
   const [summary, setSummary] = useState({ totalReceivable: 0, totalReceived: 0, expectedTotal: 0 });
-  const [systemSettings, setSystemSettings] = useState({
-    companyName: 'P.R_Doces',
-    logo: null as string | null,
-  });
+  
+  const systemSettings = {
+    companyName: settings.companyName || 'P.R_Doces',
+    logo: settings.logo || null,
+  };
+
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -65,7 +66,6 @@ export default function FinanceModule({ onNavigate }: { onNavigate?: (tab: strin
     items: [] as OrderItem[]
   });
 
-  const [expenses, setExpenses] = useState<{id: string, description: string, amount: number}[]>([]);
   const [newExpenseDesc, setNewExpenseDesc] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState<number | ''>('');
 
@@ -73,27 +73,13 @@ export default function FinanceModule({ onNavigate }: { onNavigate?: (tab: strin
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Apenas os pedidos são paginados. O resto é carregado uma vez.
-      const [paginatedOrders, summaryData, customersData, menuData, expensesData, settingsData, invData] = await Promise.all([
+      const [paginatedOrders, summaryData] = await Promise.all([
         api.getOrders({ page: currentPage, limit: itemsPerPage, search, filter }),
-        api.getOrderSummary ? api.getOrderSummary() : Promise.resolve(summary),
-        customers.length === 0 ? api.getCustomers() : Promise.resolve(customers),
-        menuProducts.length === 0 ? api.getMenuProducts() : Promise.resolve(menuProducts),
-        api.getExpenses ? api.getExpenses() : Promise.resolve([]),
-        // Carrega as configurações apenas na primeira vez
-        systemSettings.logo === null ? api.getSettings() : Promise.resolve(systemSettings),
-        api.getInventory()
+        api.getOrderSummary ? api.getOrderSummary() : Promise.resolve(summary)
       ]);
       setOrders(paginatedOrders.orders);
       setTotalPages(Math.ceil(paginatedOrders.totalCount / itemsPerPage));
       setSummary(summaryData);
-      if (settingsData.companyName) {
-        setSystemSettings({ companyName: settingsData.companyName, logo: settingsData.logo });
-      }
-      if (customers.length === 0) setCustomers(customersData);
-      if (menuProducts.length === 0) setMenuProducts(menuData);
-      setExpenses(expensesData);
-      setInventory(invData);
     } catch (err) {
       console.error('Erro na API', err);
       toast.error('Erro ao conectar com o servidor.');

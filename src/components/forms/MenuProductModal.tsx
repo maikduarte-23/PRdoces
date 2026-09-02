@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Trash2 } from 'lucide-react';
 import { MenuProduct, InventoryItem } from '../../types';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface MenuProductModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function MenuProductModal({ isOpen, onClose, onSave, initialData,
   const [formData, setFormData] = useState(initialForm);
   const [newRecipeId, setNewRecipeId] = useState('');
   const [newRecipeAmount, setNewRecipeAmount] = useState(0);
+  useModalBehavior(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -68,6 +70,7 @@ export default function MenuProductModal({ isOpen, onClose, onSave, initialData,
                 <div>
                   <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Nome do Doce (Rótulo)</label>
                   <input 
+                    autoFocus
                     type="text" 
                     value={formData.label}
                     onChange={(e) => setFormData({ ...formData, label: e.target.value })}

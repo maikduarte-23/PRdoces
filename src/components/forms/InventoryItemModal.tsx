@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { InventoryItem } from '../../types';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ const initialForm = { name: '', category: 'insumo' as 'insumo' | 'produto', quan
 
 export default function InventoryItemModal({ isOpen, onClose, onSave, initialData }: InventoryItemModalProps) {
   const [formData, setFormData] = useState(initialForm);
+  useModalBehavior(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -65,6 +67,7 @@ export default function InventoryItemModal({ isOpen, onClose, onSave, initialDat
                   <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Nome do Item</label>
                     <input 
+                      autoFocus
                       type="text" 
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}

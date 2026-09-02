@@ -15,6 +15,21 @@ export default defineConfig(({mode}) => {
       },
       dedupe: ['react', 'react-dom'],
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-motion': ['motion'],
+            'vendor-charts': ['recharts'],
+            'vendor-canvas': ['html2canvas'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-dates': ['date-fns'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
+    },
     server: {
       host: '0.0.0.0',
       allowedHosts: true,

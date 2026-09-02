@@ -27,59 +27,58 @@ import { motion, AnimatePresence } from 'motion/react';
 import ConfirmModal from './forms/ConfirmModal';
 import toast from 'react-hot-toast';
 import { api } from '../services/api';
+import { compressImage } from '../utils/imageCompressor';
+import { useAppData } from '../context/AppDataContext';
 
 const PRESET_COLORS = ['#db2777', '#7c3aed', '#2563eb', '#10b981', '#f59e0b', '#e11d48', '#0f172a'];
 
 export default function SettingsModule() {
+  const { settings, refreshSettings, isLoaded } = useAppData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
-  const [logo, setLogo] = useState<string | null>(null);
-  const [color, setColor] = useState<string>('#db2777');
-  const [companyName, setCompanyName] = useState<string>('P.R_Doces');
-  const [pixKey, setPixKey] = useState<string>('');
-  const [companyPhone, setCompanyPhone] = useState<string>('');
-  const [companyInstagram, setCompanyInstagram] = useState<string>('');
-  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState<number>(0);
-  const [dietaryWarning, setDietaryWarning] = useState<string>('');
+  const [logo, setLogo] = useState<string | null>(settings.logo || null);
+  const [color, setColor] = useState<string>(settings.color || '#db2777');
+  const [companyName, setCompanyName] = useState<string>(settings.companyName || 'P.R_Doces');
+  const [pixKey, setPixKey] = useState<string>(settings.pixKey || '');
+  const [companyPhone, setCompanyPhone] = useState<string>(settings.companyPhone || '');
+  const [companyInstagram, setCompanyInstagram] = useState<string>(settings.companyInstagram || '');
+  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState<number>(Number(settings.defaultDeliveryFee) || 0);
+  const [dietaryWarning, setDietaryWarning] = useState<string>(settings.dietaryWarning || 'Atenção alérgicos: nossos produtos podem conter traços de glúten, lactose e nozes.');
   const [currentPasswordInput, setCurrentPasswordInput] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, title: string, desc: string, onConfirm: () => void}>({ isOpen: false, title: '', desc: '', onConfirm: () => {} });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isLoaded);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      setIsLoading(true);
-      try {
-        const settings = await api.getSettings();
-        setLogo(settings.logo || null);
-        setColor(settings.color || '#db2777');
-        setCompanyName(settings.companyName || 'P.R_Doces');
-        setPixKey(settings.pixKey || '');
-        setCompanyPhone(settings.companyPhone || '');
-        setCompanyInstagram(settings.companyInstagram || '');
-        setDefaultDeliveryFee(Number(settings.defaultDeliveryFee) || 0);
-        setDietaryWarning(settings.dietaryWarning || 'Atenção alérgicos: nossos produtos podem conter traços de glúten, lactose e nozes.');
-      } catch (error) {
-        toast.error('Não foi possível carregar as configurações do sistema.');
-        console.error(error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchSettings();
-  }, []);
+    if (isLoaded) {
+      setLogo(settings.logo || null);
+      setColor(settings.color || '#db2777');
+      setCompanyName(settings.companyName || 'P.R_Doces');
+      setPixKey(settings.pixKey || '');
+      setCompanyPhone(settings.companyPhone || '');
+      setCompanyInstagram(settings.companyInstagram || '');
+      setDefaultDeliveryFee(Number(settings.defaultDeliveryFee) || 0);
+      setDietaryWarning(settings.dietaryWarning || 'Atenção alérgicos: nossos produtos podem conter traços de glúten, lactose e nozes.');
+      setIsLoading(false);
+    }
+  }, [settings, isLoaded]);
 
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogo(reader.result as string);
+      const toastId = toast.loading('Processando logo...');
+      try {
+        const compressedBase64 = await compressImage(file, { maxWidth: 512, maxHeight: 512, quality: 0.88, mimeType: 'image/png' });
+        setLogo(compressedBase64);
+        toast.success('Logo carregada e otimizada!', { id: toastId });
+      } catch (err) {
+        console.error(err);
+        toast.error('Erro ao processar imagem.', { id: toastId });
+      } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 

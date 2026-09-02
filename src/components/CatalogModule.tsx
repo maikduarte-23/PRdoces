@@ -22,6 +22,7 @@ import { api } from '../services/api';
 import { MenuProduct } from '../types';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
+import { compressImage } from '../utils/imageCompressor';
 
 const DEFAULT_BG: CatalogBg = { id: 'clean', label: 'Padrão', url: null, gradient: 'linear-gradient(to bottom right, #ffffff, #fdf2f8)' };
 
@@ -83,32 +84,28 @@ export default function CatalogModule() {
     localStorage.setItem('prdoces_catalog_mapping', JSON.stringify(categoryMapping));
   }, [categoryMapping]);
 
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // For history to persist across sessions, we should ideally use base64 or a real URL.
-      // Since this is localStorage, a large base64 might hit limits, but for a few images it's okay.
-      // However, URL.createObjectURL is temporary. 
-      // User request "stay in history" implies persistence.
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
+      const toastId = toast.loading('Otimizando imagem...');
+      try {
+        const compressedBase64 = await compressImage(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
         const newBg: CatalogBg = {
           id: generateId(),
           label: 'Upload',
-          url: base64String,
+          url: compressedBase64,
           gradient: ''
         };
-        try {
-          storage.saveCatalogBg(newBg);
-          setCustomBgs(storage.getCatalogBgs());
-          setSelectedBg(newBg);
-        } catch (err) {
-          console.error(err);
-          toast.error('Memória cheia! A imagem é grande demais ou há muitas imagens salvas.');
-        }
-      };
-      reader.readAsDataURL(file);
+        storage.saveCatalogBg(newBg);
+        setCustomBgs(storage.getCatalogBgs());
+        setSelectedBg(newBg);
+        toast.success('Fundo adicionado e otimizado!', { id: toastId });
+      } catch (err) {
+        console.error(err);
+        toast.error('Não foi possível salvar o fundo. Tente outra imagem.', { id: toastId });
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     }
   };
 

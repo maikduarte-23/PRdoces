@@ -28,40 +28,26 @@ import InventoryItemModal from './forms/InventoryItemModal';
 import MenuProductModal from './forms/MenuProductModal';
 import ConfirmModal from './forms/ConfirmModal';
 import toast from 'react-hot-toast';
+import { useAppData } from '../context/AppDataContext';
 
 const generateId = () => window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export default function InventoryModule() {
+  const { inventory: items, setInventory: setItems, refreshInventory, menuProducts, setMenuProducts, refreshMenuProducts, isLoaded } = useAppData();
   const [activeTab, setActiveTab] = useState<'inventory' | 'menu'>('inventory');
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [editingMenuProduct, setEditingMenuProduct] = useState<MenuProduct | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isLoaded);
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, title: string, desc: string, onConfirm: () => void}>({ isOpen: false, title: '', desc: '', onConfirm: () => {} });
   const itemsPerPage = 10;
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [invData, menuData] = await Promise.all([api.getInventory(), api.getMenuProducts()]);
-      setItems(invData);
-      setMenuProducts(menuData);
-    } catch (error) {
-      console.error('Erro ao conectar na API', error);
-      toast.error('Erro ao conectar com o servidor.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (isLoaded) setIsLoading(false);
+  }, [isLoaded]);
 
   // Volta para a primeira página sempre que o usuário digitar algo na busca
   useEffect(() => {

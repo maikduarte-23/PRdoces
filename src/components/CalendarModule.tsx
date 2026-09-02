@@ -43,31 +43,25 @@ import { PRODUCTION_DAILY_LIMIT_DEFAULT, WORKING_HOURS } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import LabelPrinterModal from './forms/LabelPrinterModal';
+import { useAppData } from '../context/AppDataContext';
 
 export default function CalendarModule() {
+  const { menuProducts, dailyLimits, setDailyLimits, isLoaded } = useAppData();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [dailyLimits, setDailyLimits] = useState<DailyLimit[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isLoaded);
   const [limitModal, setLimitModal] = useState<{isOpen: boolean, limitStr: string}>({ isOpen: false, limitStr: '' });
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [paginatedOrders, menuData, limitsData] = await Promise.all([
-        api.getOrders({ limit: 9999 }), // Busca todos os pedidos para a agenda
-        api.getMenuProducts(),
-        api.getDailyLimits ? api.getDailyLimits() : Promise.resolve([])
-      ]);
+      const paginatedOrders = await api.getOrders({ limit: 9999 });
       setOrders(paginatedOrders.orders);
-      setMenuProducts(menuData);
-      setDailyLimits(limitsData);
     } catch (err) {
-      console.error('Erro ao buscar da API', err);
+      console.error('Erro ao buscar pedidos:', err);
       toast.error('Erro ao conectar com o servidor.');
     } finally {
       setIsLoading(false);
@@ -75,8 +69,8 @@ export default function CalendarModule() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchOrders();
+  }, [fetchOrders]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);

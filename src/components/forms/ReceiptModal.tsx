@@ -4,6 +4,7 @@ import { X, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { Order, Customer } from '../../types';
 import { format, parseISO } from 'date-fns';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface ReceiptModalProps {
 export default function ReceiptModal({ isOpen, onClose, order, customer, companyName, logo }: ReceiptModalProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  useModalBehavior(isOpen, onClose);
 
   if (!order) return null;
 

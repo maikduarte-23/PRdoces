@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas';
 import { OrderItem, MenuProduct } from '../../types';
 import { DELIVERY_RESIDENTIAL, DIETARY_WARNING } from '../../constants';
 import toast from 'react-hot-toast';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface BudgetPreviewModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export default function BudgetPreviewModal({
   const quoteRef = useRef<HTMLDivElement>(null);
   const [whatsappMessage, setWhatsappMessage] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  useModalBehavior(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {

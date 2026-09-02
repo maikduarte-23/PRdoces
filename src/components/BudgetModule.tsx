@@ -25,10 +25,13 @@ import BudgetSidebar from './forms/BudgetSidebar';
 import BudgetDeliveryForm from './forms/BudgetDeliveryForm';
 import ConfirmModal from './forms/ConfirmModal';
 import toast from 'react-hot-toast';
+import { useAppData } from '../context/AppDataContext';
 
 const generateId = () => window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export default function BudgetModule() {
+  const { customers, setCustomers, menuProducts, inventory, setInventory, settings } = useAppData();
+
   // Recupera o rascunho salvo para não perder os dados ao trocar de aba
   const draft = useMemo(() => {
     try {
@@ -40,7 +43,6 @@ export default function BudgetModule() {
   const [items, setItems] = useState<OrderItem[]>(draft?.items || []);
   const [customerName, setCustomerName] = useState(draft?.customerName || '');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(draft?.selectedCustomerId || null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [deliveryType, setDeliveryType] = useState<'retirada' | 'uber'>(draft?.deliveryType || 'retirada');
   const [notes, setNotes] = useState(draft?.notes || '');
   const [date, setDate] = useState(draft?.date || '');
@@ -48,43 +50,21 @@ export default function BudgetModule() {
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
-  const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [discount, setDiscount] = useState(draft?.discount || 0);
-  const [deliveryFee, setDeliveryFee] = useState(draft?.deliveryFee ?? 0);
+  const [deliveryFee, setDeliveryFee] = useState(draft?.deliveryFee ?? (settings.defaultDeliveryFee ? Number(settings.defaultDeliveryFee) : 0));
   const [editingOrderId, setEditingOrderId] = useState<string | null>(draft?.editingOrderId || null);
   const [originalItems, setOriginalItems] = useState<OrderItem[] | null>(draft?.originalItems || null);
   const [originalStatus, setOriginalStatus] = useState<string | null>(draft?.originalStatus || null);
   const [originalDepositPaid, setOriginalDepositPaid] = useState<boolean | null>(draft?.originalDepositPaid || null);
   const [originalCreatedAt, setOriginalCreatedAt] = useState<string | null>(draft?.originalCreatedAt || null);
-  const [systemSettings, setSystemSettings] = useState({
-    dietaryWarning: DIETARY_WARNING,
-    companyName: 'P.R_Doces',
-    pixKey: '',
-    logo: null as string | null
-  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [custData, menuData, invData, settings] = await Promise.all([api.getCustomers(), api.getMenuProducts(), api.getInventory(), api.getSettings()]);
-        setCustomers(custData);
-        setMenuProducts(menuData);
-        setInventory(invData);
-        setSystemSettings({
-          dietaryWarning: settings.dietaryWarning || DIETARY_WARNING,
-          companyName: settings.companyName || 'P.R_Doces',
-          pixKey: settings.pixKey || '',
-          logo: settings.logo || null
-        });
-        if (draft?.deliveryFee === undefined && settings.defaultDeliveryFee) setDeliveryFee(Number(settings.defaultDeliveryFee));
-      } catch (err) {
-        toast.error('Erro ao conectar com o servidor.');
-      }
-    };
-    fetchData();
-  }, []);
+  const systemSettings = {
+    dietaryWarning: settings.dietaryWarning || DIETARY_WARNING,
+    companyName: settings.companyName || 'P.R_Doces',
+    pixKey: settings.pixKey || '',
+    logo: settings.logo || null
+  };
 
   // Salva automaticamente o rascunho sempre que algum campo for alterado
   useEffect(() => {

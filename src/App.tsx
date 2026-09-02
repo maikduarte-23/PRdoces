@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, ReactNode, useCallback } from 'react';
+import { useState, useEffect, ReactNode, useCallback, lazy, Suspense } from 'react';
 import { 
   Calculator, 
   Calendar, 
@@ -26,26 +26,54 @@ import {
   Key,
   Eye,
   EyeOff,
-  LogOut
+  LogOut,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from './services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAppData } from './context/AppDataContext';
 
-// Components
-import BudgetModule from './components/BudgetModule';
-import CalendarModule from './components/CalendarModule';
-import CustomerModule from './components/CustomerModule';
-import DashboardModule from './components/DashboardModule';
-import InventoryModule from './components/InventoryModule';
-import CatalogModule from './components/CatalogModule';
-import FinanceModule from './components/FinanceModule';
-import SettingsModule from './components/SettingsModule';
-import AdminLogsModule from './components/AdminLogsModule';
+// Lazy Loaded Components for Maximum Bundle Performance
+const BudgetModule = lazy(() => import('./components/BudgetModule'));
+const CalendarModule = lazy(() => import('./components/CalendarModule'));
+const CustomerModule = lazy(() => import('./components/CustomerModule'));
+const DashboardModule = lazy(() => import('./components/DashboardModule'));
+const InventoryModule = lazy(() => import('./components/InventoryModule'));
+const CatalogModule = lazy(() => import('./components/CatalogModule'));
+const FinanceModule = lazy(() => import('./components/FinanceModule'));
+const SettingsModule = lazy(() => import('./components/SettingsModule'));
+const AdminLogsModule = lazy(() => import('./components/AdminLogsModule'));
 
 type Tab = 'dashboard' | 'orçamentos' | 'agenda' | 'clientes' | 'estoque' | 'catálogo' | 'financeiro' | 'configurações' | 'admin';
+
+function ModuleSkeleton() {
+  return (
+    <div className="w-full space-y-6 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <div className="h-8 w-48 bg-slate-200 rounded-2xl" />
+          <div className="h-4 w-32 bg-slate-100 rounded-xl" />
+        </div>
+        <div className="h-10 w-28 bg-slate-200 rounded-2xl" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-28 bg-white border border-slate-200/80 rounded-3xl p-5 space-y-3">
+            <div className="h-6 w-6 bg-slate-100 rounded-xl" />
+            <div className="h-6 w-24 bg-slate-200 rounded-xl" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 h-80 bg-white border border-slate-200/80 rounded-[2.5rem]" />
+        <div className="lg:col-span-4 h-80 bg-white border border-slate-200/80 rounded-[2.5rem]" />
+      </div>
+    </div>
+  );
+}
 
 // Interceptador de Erros Globais (Monitoramento Silencioso)
 if (typeof window !== 'undefined' && !(window as any)._prdoces_logger_setup) {
@@ -71,6 +99,7 @@ if (typeof window !== 'undefined' && !(window as any)._prdoces_logger_setup) {
 }
 
 export default function App() {
+  const { settings, isLoaded, refreshSettings } = useAppData();
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (window.location.pathname.startsWith('/admin')) return 'admin';
     const saved = localStorage.getItem('prdoces_current_tab');
@@ -78,8 +107,8 @@ export default function App() {
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [customLogo, setCustomLogo] = useState<string | null>(null);
-  const [customColor, setCustomColor] = useState<string | null>(null);
+  const customLogo = settings.logo || null;
+  const customColor = settings.color || null;
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('prdoces_auth') === 'true');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -87,26 +116,13 @@ export default function App() {
   const [lockoutTime, setLockoutTime] = useState<number | null>(() => Number(localStorage.getItem('prdoces_lockout_time')) || null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [shake, setShake] = useState(false);
-  const [isAppLoading, setIsAppLoading] = useState(true);
-
-  const fetchAppSettings = useCallback(async () => {
-    try {
-      const settings = await api.getSettings();
-      setCustomLogo(settings.logo || null);
-      setCustomColor(settings.color || null);
-    } catch (error) {
-      console.error("Falha ao buscar configurações da aplicação.", error);
-    } finally {
-      setIsAppLoading(false);
-    }
-  }, []);
+  const isAppLoading = !isLoaded;
 
   // Ouve quando a página de configurações salva os dados para atualizar instantaneamente
   useEffect(() => {
-    fetchAppSettings(); // Carga inicial
-    window.addEventListener('prdoces_settings_update', fetchAppSettings);
-    return () => window.removeEventListener('prdoces_settings_update', fetchAppSettings);
-  }, [fetchAppSettings]);
+    window.addEventListener('prdoces_settings_update', refreshSettings);
+    return () => window.removeEventListener('prdoces_settings_update', refreshSettings);
+  }, [refreshSettings]);
 
   useEffect(() => {
     localStorage.setItem('prdoces_current_tab', activeTab);
@@ -462,15 +478,17 @@ export default function App() {
               }}
             className="w-full h-full"
             >
-            {activeTab === 'dashboard' && <DashboardModule onNavigate={(tab) => handleNavigate(tab as Tab)} />}
+            <Suspense fallback={<ModuleSkeleton />}>
+              {activeTab === 'dashboard' && <DashboardModule onNavigate={(tab) => handleNavigate(tab as Tab)} />}
               {activeTab === 'orçamentos' && <BudgetModule />}
               {activeTab === 'agenda' && <CalendarModule />}
               {activeTab === 'clientes' && <CustomerModule />}
-            {activeTab === 'financeiro' && <FinanceModule onNavigate={(tab) => handleNavigate(tab as Tab)} />}
+              {activeTab === 'financeiro' && <FinanceModule onNavigate={(tab) => handleNavigate(tab as Tab)} />}
               {activeTab === 'catálogo' && <CatalogModule />}
               {activeTab === 'estoque' && <InventoryModule />}
               {activeTab === 'configurações' && <SettingsModule />}
-            {activeTab === 'admin' && <AdminLogsModule />}
+              {activeTab === 'admin' && <AdminLogsModule />}
+            </Suspense>
             </motion.div>
           </AnimatePresence>
         </div>

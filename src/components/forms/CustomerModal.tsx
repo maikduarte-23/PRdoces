@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { Customer } from '../../types';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ const initialForm = { name: '', phone: '', restrictions: '', theme: '', themes: 
 
 export default function CustomerModal({ isOpen, onClose, onSave, initialData }: CustomerModalProps) {
   const [formData, setFormData] = useState(initialForm);
+  useModalBehavior(isOpen, onClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,6 +60,7 @@ export default function CustomerModal({ isOpen, onClose, onSave, initialData }: 
                  <div>
                   <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Nome Completo</label>
                   <input 
+                    autoFocus
                     type="text" 
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}

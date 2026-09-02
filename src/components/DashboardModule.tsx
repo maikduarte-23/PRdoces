@@ -33,35 +33,21 @@ import {
 } from 'recharts';
 import toast from 'react-hot-toast';
 import LabelPrinterModal from './forms/LabelPrinterModal';
+import { useAppData } from '../context/AppDataContext';
 
 export default function DashboardModule({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+  const { inventory, menuProducts, expenses, settings, isLoaded } = useAppData();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [menuProducts, setMenuProducts] = useState<MenuProduct[]>([]);
-  const [expenses, setExpenses] = useState<{id: string, description: string, amount: number}[]>([]);
-  const [companyNameSys, setCompanyNameSys] = useState('P.R_Doces');
-  const [isLoading, setIsLoading] = useState(true);
+  const companyNameSys = settings.companyName || 'P.R_Doces';
+  const [isLoading, setIsLoading] = useState(!isLoaded);
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchOrders = async () => {
       setIsLoading(true);
       try {
-        const [paginatedOrders, custData, invData, menuData, expensesData, settingsData] = await Promise.all([
-          api.getOrders({ limit: 9999 }), // Busca todos os pedidos para o dashboard
-          api.getCustomers(), 
-          api.getInventory(), 
-          api.getMenuProducts(),
-          api.getExpenses ? api.getExpenses() : Promise.resolve([]),
-          api.getSettings()
-        ]);
+        const paginatedOrders = await api.getOrders({ limit: 9999 });
         setOrders(paginatedOrders.orders);
-        setCustomers(custData);
-        setInventory(invData);
-        setMenuProducts(menuData);
-        setExpenses(expensesData);
-        if (settingsData.companyName) setCompanyNameSys(settingsData.companyName);
       } catch (err) {
         console.error('Erro ao conectar na API.', err);
         toast.error('Erro ao conectar com o servidor.');
@@ -69,7 +55,7 @@ export default function DashboardModule({ onNavigate }: { onNavigate?: (tab: str
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchOrders();
   }, []);
 
   // Otimização: Gera os dados do gráfico, receita, custo e contagem de hoje simultaneamente

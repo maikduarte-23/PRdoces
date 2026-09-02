@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trash2 } from 'lucide-react';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export default function ConfirmModal({
   cancelText = "Cancelar",
   icon = <Trash2 size={24} />
 }: ConfirmModalProps) {
+  useModalBehavior(isOpen, onClose);
+
   return (
     <AnimatePresence>
       {isOpen && (

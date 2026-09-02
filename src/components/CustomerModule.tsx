@@ -25,37 +25,34 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import CustomerModal from './forms/CustomerModal';
 import toast from 'react-hot-toast';
+import { useAppData } from '../context/AppDataContext';
 
 const generateId = () => window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export default function CustomerModule() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { customers, setCustomers, refreshCustomers, isLoaded } = useAppData();
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isLoaded);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchOrders = useCallback(async () => {
     try {
-      // Pedidos são necessários para o histórico, então buscamos todos
-      const [custData, paginatedOrders] = await Promise.all([api.getCustomers(), api.getOrders({ limit: 9999 })]);
-      setCustomers(custData);
+      const paginatedOrders = await api.getOrders({ limit: 9999 });
       setOrders(paginatedOrders.orders);
     } catch (err) {
-      console.error('Erro ao buscar da API', err);
-      toast.error('Erro ao conectar com o servidor.');
+      console.error('Erro ao buscar pedidos:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchOrders();
+  }, [fetchOrders]);
 
   const openForm = (customer?: Customer) => {
     setEditingCustomer(customer || null);

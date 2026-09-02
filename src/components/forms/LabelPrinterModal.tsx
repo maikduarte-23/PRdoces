@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, AlertCircle } from 'lucide-react';
 import { Order, MenuProduct } from '../../types';
 import { format, parseISO } from 'date-fns';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface LabelPrinterModalProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface LabelPrinterModalProps {
 }
 
 export default function LabelPrinterModal({ isOpen, onClose, order, menuProducts }: LabelPrinterModalProps) {
+  useModalBehavior(isOpen, onClose);
+
   if (!order) return null;
 
   const handlePrint = () => {
