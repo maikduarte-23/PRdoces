@@ -38,7 +38,6 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR === 'true' ? false : true,
       watch: {
         usePolling: true,
-        ignored: ['**/backend/**'],
       },
       proxy: {
         '/api': {

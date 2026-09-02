@@ -1,19 +1,18 @@
 services:
   frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
     # Mapeia a porta 3050 do seu PC para a porta 3000 do container
     ports:
       - "3050:3000" 
-    # Carrega automaticamente as variáveis do seu arquivo .env.local
+    # Carrega automaticamente as variáveis do seu arquivo .env
     env_file:
       - .env
     # Volumes permitem o "Hot Reload" (atualização em tempo real)
     volumes:
-      - .:/app
+      - ./frontend:/app
       - node_modules_frontend:/app/node_modules
-      - /app/backend # Evita que o frontend "enxergue" mudanças nos arquivos do backend
     # Mantém o container rodando caso dê algum erro não crítico
     restart: unless-stopped
     depends_on:
