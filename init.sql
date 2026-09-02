@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 CREATE TABLE IF NOT EXISTS menu_products (
   id VARCHAR(255) PRIMARY KEY,
   label VARCHAR(255) NOT NULL,
+  category VARCHAR(100),
   price NUMERIC,
   min_qty INTEGER,
   is_by_hundred BOOLEAN,

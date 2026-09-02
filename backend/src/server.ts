@@ -8,20 +8,22 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Conexão com o Banco de Dados
+// Conexão com o Banco de Dados PostgreSQL
 const pool = new Pool({
-  user: process.env.POSTGRES_USER,
-  host: process.env.POSTGRES_HOST, // Virá do docker-compose: 'banco_de_dados'
-  database: process.env.POSTGRES_DB,
-  password: process.env.POSTGRES_PASSWORD,
-  port: 5432, // Porta interna do container do Postgres
+  user: process.env.POSTGRES_USER || 'admin',
+  host: process.env.POSTGRES_HOST || 'banco_de_dados',
+  database: process.env.POSTGRES_DB || 'pr_doces_db',
+  password: process.env.POSTGRES_PASSWORD || 'sua_senha_super_secreta_123',
+  port: 5432,
 });
 
 // Middlewares
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*' // Permite requisições do frontend local ou via VPN Tailscale
+  origin: process.env.FRONTEND_URL || '*'
 }));
-app.use(express.json()); // Permite que o servidor entenda JSON
+// Aumenta o limite de payload para 10MB para suportar upload de logos e fundos comprimidos
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rota de teste
 app.get('/api', (req, res) => {
@@ -37,16 +39,16 @@ const parseJson = (data: any, fallback: any = []) => {
   return data || fallback;
 };
 
-// Rota para listar todos os clientes
+// --- ROTAS DE CLIENTES (CUSTOMERS) ---
 app.get('/api/customers', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM customers');
+    const { rows } = await pool.query('SELECT * FROM customers ORDER BY name ASC');
     const customers = rows.map(row => ({
       id: row.id,
       name: row.name,
-      phone: row.phone,
-      dietaryRestrictions: row.dietary_restrictions,
-      historyThemes: parseJson(row.history_themes)
+      phone: row.phone || '',
+      dietaryRestrictions: row.dietary_restrictions || '',
+      historyThemes: parseJson(row.history_themes, [])
     }));
     res.json(customers);
   } catch (err) {
@@ -55,12 +57,10 @@ app.get('/api/customers', async (req, res) => {
   }
 });
 
-// Rota para salvar/atualizar um cliente
 app.post('/api/customers', async (req, res) => {
   try {
     const { id, name, phone, dietaryRestrictions, historyThemes } = req.body;
     
-    // Este comando SQL insere um novo cliente. Se o ID já existir, ele atualiza os dados.
     const query = `
       INSERT INTO customers (id, name, phone, dietary_restrictions, history_themes) 
       VALUES ($1, $2, $3, $4, $5)
@@ -71,18 +71,15 @@ app.post('/api/customers', async (req, res) => {
         history_themes = EXCLUDED.history_themes
       RETURNING *;
     `;
-    // O historyThemes que é um array no JS, guardamos como um texto JSON no banco
-    const values = [id, name, phone, dietaryRestrictions, JSON.stringify(historyThemes || [])];
+    const values = [id, name, phone || '', dietaryRestrictions || '', JSON.stringify(historyThemes || [])];
     
     const { rows } = await pool.query(query, values);
-    
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erro ao salvar cliente:', err);
     res.status(500).send('Erro no Servidor');
   }
 });
-
 
 app.delete('/api/customers/:id', async (req, res) => {
   try {
@@ -97,15 +94,15 @@ app.delete('/api/customers/:id', async (req, res) => {
 // --- ROTAS DE ESTOQUE (INVENTORY) ---
 app.get('/api/inventory', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM inventory_items');
+    const { rows } = await pool.query('SELECT * FROM inventory_items ORDER BY name ASC');
     const items = rows.map(row => ({
       id: row.id,
       name: row.name,
-      category: row.category,
-      quantity: Number(row.quantity),
-      unit: row.unit,
-      minQuantity: Number(row.min_quantity),
-      unitPrice: Number(row.unit_price)
+      category: row.category || 'insumo',
+      quantity: Number(row.quantity) || 0,
+      unit: row.unit || 'un',
+      minQuantity: Number(row.min_quantity) || 0,
+      unitPrice: Number(row.unit_price) || 0
     }));
     res.json(items);
   } catch (err) {
@@ -125,7 +122,7 @@ app.post('/api/inventory', async (req, res) => {
         unit = EXCLUDED.unit, min_quantity = EXCLUDED.min_quantity, unit_price = EXCLUDED.unit_price
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, [id, name, category, quantity, unit, minQuantity, unitPrice]);
+    const { rows } = await pool.query(query, [id, name, category || 'insumo', quantity, unit || 'un', minQuantity || 0, unitPrice || 0]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erro ao salvar estoque:', err);
@@ -146,14 +143,15 @@ app.delete('/api/inventory/:id', async (req, res) => {
 // --- ROTAS DE CARDÁPIO (MENU PRODUCTS) ---
 app.get('/api/menu-products', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM menu_products');
+    const { rows } = await pool.query('SELECT * FROM menu_products ORDER BY label ASC');
     const products = rows.map(row => ({
       id: row.id,
       label: row.label,
-      price: Number(row.price),
-      minQty: row.min_qty,
-      isByHundred: row.is_by_hundred,
-      recipe: parseJson(row.recipe)
+      category: row.category || '',
+      price: Number(row.price) || 0,
+      minQty: row.min_qty || 1,
+      isByHundred: !!row.is_by_hundred,
+      recipe: parseJson(row.recipe, [])
     }));
     res.json(products);
   } catch (err) {
@@ -164,16 +162,16 @@ app.get('/api/menu-products', async (req, res) => {
 
 app.post('/api/menu-products', async (req, res) => {
   try {
-    const { id, label, price, minQty, isByHundred, recipe } = req.body;
+    const { id, label, category, price, minQty, isByHundred, recipe } = req.body;
     const query = `
-      INSERT INTO menu_products (id, label, price, min_qty, is_by_hundred, recipe) 
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO menu_products (id, label, category, price, min_qty, is_by_hundred, recipe) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (id) DO UPDATE SET
-        label = EXCLUDED.label, price = EXCLUDED.price, 
+        label = EXCLUDED.label, category = EXCLUDED.category, price = EXCLUDED.price, 
         min_qty = EXCLUDED.min_qty, is_by_hundred = EXCLUDED.is_by_hundred, recipe = EXCLUDED.recipe
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, [id, label, price, minQty, isByHundred, JSON.stringify(recipe || [])]);
+    const { rows } = await pool.query(query, [id, label, category || '', price, minQty || 1, isByHundred ?? false, JSON.stringify(recipe || [])]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erro ao salvar cardápio:', err);
@@ -194,7 +192,7 @@ app.delete('/api/menu-products/:id', async (req, res) => {
 // --- ROTAS DE PEDIDOS (ORDERS) ---
 app.get('/api/orders', async (req, res) => {
   const page = parseInt(req.query.page as string, 10) || 1;
-  const limit = parseInt(req.query.limit as string, 10) || 9; // Padrão de 9 itens
+  const limit = parseInt(req.query.limit as string, 10) || 9;
   const search = req.query.search as string || '';
   const filter = req.query.filter as string || 'all';
   const offset = (page - 1) * limit;
@@ -218,21 +216,26 @@ app.get('/api/orders', async (req, res) => {
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
   try {
-    // Query para contar o total de itens que correspondem ao filtro
     const countQuery = `SELECT COUNT(*) FROM orders ${whereString}`;
     const totalResult = await pool.query(countQuery, queryParams);
     const totalCount = parseInt(totalResult.rows[0].count, 10);
 
-    // Query para buscar os dados paginados
     const dataQuery = `SELECT * FROM orders ${whereString} ORDER BY date DESC LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
     const { rows } = await pool.query(dataQuery, [...queryParams, limit, offset]);
 
     const orders = rows.map(row => ({
-      id: row.id, customerId: row.customer_id, customerName: row.customer_name,
-      createdAt: row.created_at, date: row.date, time: row.time,
-      deliveryType: row.delivery_type, items: parseJson(row.items),
-      totalPrice: Number(row.total_price), depositPaid: row.deposit_paid,
-      notes: row.notes, status: row.status
+      id: row.id, 
+      customerId: row.customer_id, 
+      customerName: row.customer_name,
+      createdAt: row.created_at, 
+      date: row.date, 
+      time: row.time,
+      deliveryType: row.delivery_type, 
+      items: parseJson(row.items, []),
+      totalPrice: Number(row.total_price) || 0, 
+      depositPaid: !!row.deposit_paid,
+      notes: row.notes || '', 
+      status: row.status
     }));
 
     res.json({ orders, totalCount });
@@ -254,7 +257,20 @@ app.post('/api/orders', async (req, res) => {
         total_price = EXCLUDED.total_price, deposit_paid = EXCLUDED.deposit_paid, notes = EXCLUDED.notes, status = EXCLUDED.status
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, [id, customerId, customerName, createdAt || new Date().toISOString(), date, time, deliveryType, JSON.stringify(items || []), totalPrice, depositPaid, notes, status]);
+    const { rows } = await pool.query(query, [
+      id, 
+      customerId || 'anonymous', 
+      customerName, 
+      createdAt || new Date().toISOString(), 
+      date, 
+      time, 
+      deliveryType || 'retirada', 
+      JSON.stringify(items || []), 
+      totalPrice || 0, 
+      depositPaid ?? false, 
+      notes || '', 
+      status || 'pendente'
+    ]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erro ao salvar pedido:', err);
@@ -291,9 +307,9 @@ app.get('/api/orders/summary', async (req, res) => {
       WHERE status <> 'cancelado'
     `);
     const summary = {
-      totalReceivable: Number(rows[0].totalReceivable),
-      totalReceived: Number(rows[0].totalReceived),
-      expectedTotal: Number(rows[0].totalReceivable) + Number(rows[0].totalReceived)
+      totalReceivable: Number(rows[0].totalReceivable) || 0,
+      totalReceived: Number(rows[0].totalReceived) || 0,
+      expectedTotal: (Number(rows[0].totalReceivable) || 0) + (Number(rows[0].totalReceived) || 0)
     };
     res.json(summary);
   } catch (err) {
@@ -309,7 +325,8 @@ app.get('/api/daily-limits', async (req, res) => {
     const limits = rows.map(row => ({
       id: row.id,
       date: row.date,
-      limit: Number(row.limit_value)
+      limit: Number(row.limit_value) || 5,
+      maxOrders: Number(row.limit_value) || 5
     }));
     res.json(limits);
   } catch (err) {
@@ -320,7 +337,8 @@ app.get('/api/daily-limits', async (req, res) => {
 
 app.post('/api/daily-limits', async (req, res) => {
   try {
-    const { id, date, limit } = req.body;
+    const { id, date, limit, maxOrders } = req.body;
+    const finalLimit = limit ?? maxOrders ?? 5;
     const query = `
       INSERT INTO daily_limits (id, date, limit_value) 
       VALUES ($1, $2, $3)
@@ -328,7 +346,7 @@ app.post('/api/daily-limits', async (req, res) => {
         limit_value = EXCLUDED.limit_value
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, [id, date, limit]);
+    const { rows } = await pool.query(query, [id || date, date, finalLimit]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erro ao salvar limite diário:', err);
@@ -349,11 +367,11 @@ app.delete('/api/daily-limits/:id', async (req, res) => {
 // --- ROTAS DE DESPESAS FIXAS (EXPENSES) ---
 app.get('/api/expenses', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM expenses');
+    const { rows } = await pool.query('SELECT * FROM expenses ORDER BY description ASC');
     const expenses = rows.map(row => ({
       id: row.id,
       description: row.description,
-      amount: Number(row.amount)
+      amount: Number(row.amount) || 0
     }));
     res.json(expenses);
   } catch (err) {
@@ -372,7 +390,7 @@ app.post('/api/expenses', async (req, res) => {
         description = EXCLUDED.description, amount = EXCLUDED.amount
       RETURNING *;
     `;
-    const { rows } = await pool.query(query, [id, description, amount]);
+    const { rows } = await pool.query(query, [id, description, amount || 0]);
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Erro ao salvar despesa:', err);
@@ -394,7 +412,6 @@ app.delete('/api/expenses/:id', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM settings');
-    // Transforma o array de {key, value} em um objeto { key1: value1, key2: value2 }
     const settings = rows.reduce((acc, row) => {
       acc[row.key] = row.value;
       return acc;
@@ -449,11 +466,15 @@ const initDB = async () => {
       CREATE TABLE IF NOT EXISTS menu_products (
         id VARCHAR(255) PRIMARY KEY,
         label VARCHAR(255) NOT NULL,
+        category VARCHAR(100),
         price NUMERIC,
         min_qty INTEGER,
         is_by_hundred BOOLEAN,
         recipe JSONB DEFAULT '[]'::jsonb
       );
+      -- Garante a coluna category caso a tabela já existisse antes
+      ALTER TABLE menu_products ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+
       CREATE TABLE IF NOT EXISTS orders (
         id VARCHAR(255) PRIMARY KEY,
         customer_id VARCHAR(255),

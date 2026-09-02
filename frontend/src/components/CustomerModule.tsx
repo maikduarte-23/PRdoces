@@ -70,7 +70,7 @@ export default function CustomerModule() {
 
     try {
       await api.saveCustomer(newCustomer);
-      await fetchData(); 
+      await refreshCustomers(); 
       setIsModalOpen(false);
       toast.success('Cliente salvo com sucesso!');
     } catch (error) {
@@ -93,7 +93,7 @@ export default function CustomerModule() {
     if (customerToDelete) {
       try {
         await api.deleteCustomer(customerToDelete);
-        await fetchData(); // Recarrega do banco
+        await refreshCustomers();
         setIsConfirmDeleteOpen(false);
         setCustomerToDelete(null);
         toast.success('Cliente excluído com sucesso!');

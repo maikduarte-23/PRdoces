@@ -11,10 +11,22 @@ export interface Customer {
   historyThemes: string[];
 }
 
+export interface OrderItem {
+  id: string;
+  type: string; // Dynamic type referencing MenuProduct id or label
+  quantity: number;
+  unitPrice: number;
+  decorationPricePerUnit: number;
+  flowerWrappers: boolean;
+  flowerWrapperPrice: number;
+  total: number;
+}
+
 export interface Order {
   id: string;
   customerId: string;
   customerName: string;
+  createdAt?: string; // ISO string
   date: string; // ISO string
   time: string;
   deliveryType: 'retirada' | 'uber';
@@ -31,23 +43,16 @@ export interface MenuProduct {
   price: number;
   minQty: number;
   isByHundred: boolean;
-}
-
-export interface OrderItem {
-  id: string;
-  type: string; // Dynamic type referencing MenuProduct id or name
-  quantity: number;
-  unitPrice: number;
-  decorationPricePerUnit: number;
-  flowerWrappers: boolean;
-  flowerWrapperPrice: number;
-  total: number;
+  category?: string;
+  recipe?: { inventoryId: string; amount: number }[];
 }
 
 export interface DailyLimit {
+  id?: string;
   date: string;
-  limit: number;
-  currentCount: number;
+  limit?: number;
+  maxOrders?: number;
+  currentCount?: number;
 }
 
 export interface InventoryItem {
@@ -58,4 +63,21 @@ export interface InventoryItem {
   unit: string;
   minQuantity: number;
   unitPrice: number;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface SystemSettings {
+  logo?: string | null;
+  color?: string | null;
+  companyName?: string;
+  pixKey?: string;
+  companyPhone?: string;
+  companyInstagram?: string;
+  defaultDeliveryFee?: string | number;
+  dietaryWarning?: string;
 }
