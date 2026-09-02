@@ -8,14 +8,10 @@ import {
   Package, 
   ClipboardList, 
   Settings as SettingsIcon, 
-  Lock,
   LogOut,
   Menu,
   X as CloseIcon,
   ChefHat,
-  Key,
-  Eye,
-  EyeOff,
   Clock,
   MoreHorizontal
 } from 'lucide-react';
@@ -25,6 +21,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAppData } from './context/AppDataContext';
+import LoginPage from './components/LoginPage';
 
 // Lazy Loaded Components for Maximum Bundle Performance
 const BudgetModule = lazy(() => import('./components/BudgetModule'));
@@ -102,12 +99,6 @@ export default function App() {
   const companyNameSys = settings.companyName || 'P.R_Doces';
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('prdoces_auth') === 'true');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(() => Number(localStorage.getItem('prdoces_login_attempts')) || 0);
-  const [lockoutTime, setLockoutTime] = useState<number | null>(() => Number(localStorage.getItem('prdoces_lockout_time')) || null);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [shake, setShake] = useState(false);
   const isAppLoading = !isLoaded;
 
   // Ouve quando a página de configurações salva os dados para atualizar instantaneamente
@@ -127,27 +118,6 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Contador regressivo do bloqueio de segurança
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (lockoutTime) {
-      setTimeLeft(Math.ceil((lockoutTime - Date.now()) / 1000));
-      interval = setInterval(() => {
-        const left = Math.ceil((lockoutTime - Date.now()) / 1000);
-        if (left <= 0) {
-          setLockoutTime(null);
-          setLoginAttempts(0);
-          setTimeLeft(0);
-          localStorage.removeItem('prdoces_lockout_time');
-          localStorage.removeItem('prdoces_login_attempts');
-        } else {
-          setTimeLeft(left);
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [lockoutTime]);
-
   const toggleSidebar = () => {
     if (window.innerWidth < 1024) {
       setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -163,43 +133,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (lockoutTime && Date.now() < lockoutTime) {
-      toast.error(`Sistema bloqueado. Aguarde ${Math.ceil((lockoutTime - Date.now()) / 1000)}s.`);
-      return;
-    }
-
-    const currentPassword = localStorage.getItem('prdoces_password') || 'admin';
-    
-    if (password === currentPassword) {
-      setIsAuthenticated(true);
-      localStorage.setItem('prdoces_auth', 'true');
-      setLoginAttempts(0);
-      setLockoutTime(null);
-      localStorage.removeItem('prdoces_login_attempts');
-      localStorage.removeItem('prdoces_lockout_time');
-      toast.success('Bem-vinda de volta!');
-    } else {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-      localStorage.setItem('prdoces_login_attempts', newAttempts.toString());
-      setShake(true);
-      setTimeout(() => setShake(false), 400);
-      setPassword('');
-
-      if (newAttempts >= 5) {
-        const unlockTime = Date.now() + 60000;
-        setLockoutTime(unlockTime);
-        localStorage.setItem('prdoces_lockout_time', unlockTime.toString());
-        toast.error('Muitas tentativas erradas! Sistema bloqueado por 1 minuto.');
-      } else {
-        toast.error(`Senha incorreta! (${5 - newAttempts} tentativas restantes)`);
-      }
-    }
-  };
-
   const handleLogout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('prdoces_auth');
@@ -208,71 +141,12 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen bg-slate-900 items-center justify-center p-4 relative overflow-hidden font-sans">
-        <Toaster position="top-center" toastOptions={{ style: { borderRadius: '16px', fontWeight: 'bold' } }} />
-        {customColor && (
-          <style>{`
-            .bg-brand-primary { background-color: ${customColor} !important; }
-            .text-brand-primary { color: ${customColor} !important; }
-            .border-brand-primary { border-color: ${customColor} !important; }
-            .ring-brand-primary\\/20 { --tw-ring-color: color-mix(in srgb, ${customColor} 20%, transparent) !important; }
-            .shadow-brand-primary\\/20 { box-shadow: 0 10px 15px -3px color-mix(in srgb, ${customColor} 20%, transparent), 0 4px 6px -4px color-mix(in srgb, ${customColor} 20%, transparent) !important; }
-            .selection\\:bg-brand-primary\\/10 *::selection { background-color: color-mix(in srgb, ${customColor} 10%, transparent) !important; }
-          `}</style>
-        )}
-        <motion.div 
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-2xl shadow-slate-950/50 border border-slate-100 w-full max-w-md text-center"
-        >
-          <div className="w-20 sm:w-24 h-20 sm:h-24 bg-brand-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner overflow-hidden">
-            {customLogo ? (
-              <img src={customLogo} alt="Logo" className="w-full h-full object-cover" />
-            ) : (
-              <ChefHat size={44} className="text-brand-primary" />
-            )}
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">
-            {companyNameSys}
-          </h1>
-          <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8">Digite sua senha para acessar o sistema.</p>
-
-          <motion.form 
-            animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}} 
-            transition={{ duration: 0.4 }}
-            onSubmit={handleLogin} 
-            className="space-y-4"
-          >
-            <div className="relative">
-              <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Senha de acesso..."
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={!!lockoutTime}
-                className="w-full bg-slate-50 border border-slate-200 pl-12 pr-12 py-3.5 sm:py-4 rounded-2xl text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all disabled:opacity-50 disabled:bg-slate-100"
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={!!lockoutTime}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none p-1"
-                title={showPassword ? "Ocultar senha" : "Mostrar senha"}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            <button 
-              type="submit"
-              disabled={!!lockoutTime}
-              className="w-full min-h-[48px] bg-brand-primary text-white font-black uppercase tracking-widest text-xs sm:text-sm py-3.5 sm:py-4 rounded-2xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-brand-primary/20 disabled:opacity-70 disabled:grayscale disabled:cursor-not-allowed"
-            >
-              <Lock size={18} /> {lockoutTime ? `Bloqueado (${timeLeft}s)` : 'Entrar no Sistema'}
-            </button>
-          </motion.form>
-        </motion.div>
-      </div>
+      <LoginPage 
+        customLogo={customLogo}
+        customColor={customColor}
+        companyName={companyNameSys}
+        onLoginSuccess={() => setIsAuthenticated(true)}
+      />
     );
   }
 
