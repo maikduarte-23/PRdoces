@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export type Tab = 'dashboard' | 'orçamentos' | 'agenda' | 'clientes' | 'estoque' | 'catálogo' | 'financeiro' | 'configurações' | 'admin';
+
 export interface Customer {
   id: string;
   name: string;

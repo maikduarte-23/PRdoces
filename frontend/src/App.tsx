@@ -1,17 +1,10 @@
-import { useState, useEffect, useCallback, lazy, Suspense, ReactNode } from 'react';
+import { useState, useEffect, lazy, Suspense, ReactNode } from 'react';
 import { 
   LayoutDashboard, 
   Calculator, 
   Calendar, 
-  Users, 
   DollarSign, 
-  Package, 
-  ClipboardList, 
-  Settings as SettingsIcon, 
-  LogOut,
   Menu,
-  X as CloseIcon,
-  ChefHat,
   Clock,
   MoreHorizontal
 } from 'lucide-react';
@@ -22,6 +15,8 @@ import { ptBR } from 'date-fns/locale';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAppData } from './context/AppDataContext';
 import LoginPage from './components/LoginPage';
+import Sidebar from './components/Sidebar';
+import { Tab } from './types';
 
 // Lazy Loaded Components for Maximum Bundle Performance
 const BudgetModule = lazy(() => import('./components/BudgetModule'));
@@ -33,8 +28,6 @@ const CatalogModule = lazy(() => import('./components/CatalogModule'));
 const FinanceModule = lazy(() => import('./components/FinanceModule'));
 const SettingsModule = lazy(() => import('./components/SettingsModule'));
 const AdminLogsModule = lazy(() => import('./components/AdminLogsModule'));
-
-type Tab = 'dashboard' | 'orçamentos' | 'agenda' | 'clientes' | 'estoque' | 'catálogo' | 'financeiro' | 'configurações' | 'admin';
 
 function ModuleSkeleton() {
   return (
@@ -164,126 +157,19 @@ export default function App() {
         `}</style>
       )}
 
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar (Desktop & Mobile Drawer) */}
-      <aside 
-        className={`bg-[#0f172a] text-white flex flex-col z-50 fixed lg:relative h-full transition-[width,transform] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-2xl lg:shadow-none border-r border-white/5
-          ${isSidebarOpen ? 'w-[260px]' : 'lg:w-[80px] w-0'}
-          ${isMobileMenuOpen ? 'translate-x-0 w-[280px]' : '-translate-x-full lg:translate-x-0'}
-        `}
-      >
-        {/* Cabeçalho da Sidebar */}
-        <div className={`flex items-center h-16 shrink-0 bg-white/5 transition-all ${isSidebarOpen ? 'px-6 justify-between' : 'justify-center'}`}>
-          <div className={`flex items-center gap-3 overflow-hidden ${!isSidebarOpen ? 'lg:hidden' : ''}`}>
-            <div className="w-8 h-8 rounded-xl bg-brand-primary flex items-center justify-center shrink-0 shadow-lg shadow-brand-primary/20 overflow-hidden">
-               {customLogo ? (
-                 <img src={customLogo} alt="Logo" className="w-full h-full object-cover" />
-               ) : (
-                 <ChefHat size={18} className="text-white" />
-               )}
-            </div>
-            <h1 className="text-sm font-black tracking-tighter text-white uppercase whitespace-nowrap">
-              {companyNameSys}
-            </h1>
-          </div>
-          <button 
-            onClick={() => setIsMobileMenuOpen(false)} 
-            className="lg:hidden p-2 text-slate-400 hover:text-white transition-colors"
-          >
-            <CloseIcon size={20} />
-          </button>
-          <button 
-            onClick={toggleSidebar} 
-            className={`hidden lg:flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all ${isSidebarOpen ? 'p-2' : 'w-10 h-10'}`}
-          >
-            <Menu size={20} />
-          </button>
-        </div>
-
-        {/* Links de Navegação */}
-        <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto scrollbar-hide">
-          <NavItem 
-            icon={<LayoutDashboard size={20} />} 
-            label="Dashboard" 
-            active={activeTab === 'dashboard'} 
-            onClick={() => handleNavigate('dashboard')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<Calculator size={20} />} 
-            label="Orçamentos" 
-            active={activeTab === 'orçamentos'} 
-            onClick={() => handleNavigate('orçamentos')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<Calendar size={20} />} 
-            label="Agenda" 
-            active={activeTab === 'agenda'} 
-            onClick={() => handleNavigate('agenda')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<Users size={20} />} 
-            label="Clientes" 
-            active={activeTab === 'clientes'} 
-            onClick={() => handleNavigate('clientes')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<DollarSign size={20} />} 
-            label="Financeiro" 
-            active={activeTab === 'financeiro'} 
-            onClick={() => handleNavigate('financeiro')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<ClipboardList size={20} />} 
-            label="Catálogo" 
-            active={activeTab === 'catálogo'} 
-            onClick={() => handleNavigate('catálogo')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<Package size={20} />} 
-            label="Estoque" 
-            active={activeTab === 'estoque'} 
-            onClick={() => handleNavigate('estoque')}
-            collapsed={!isSidebarOpen}
-          />
-          <NavItem 
-            icon={<SettingsIcon size={20} />} 
-            label="Configurações" 
-            active={activeTab === 'configurações'} 
-            onClick={() => handleNavigate('configurações')}
-            collapsed={!isSidebarOpen}
-          />
-        </nav>
-
-        {/* Rodapé da Sidebar */}
-        <div className={`p-4 mt-auto transition-all duration-300 ${isSidebarOpen || isMobileMenuOpen ? 'opacity-100' : 'opacity-0 scale-90 invisible h-0 overflow-hidden'}`}>
-          <button 
-            onClick={handleLogout} 
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-400 hover:bg-white/5 hover:text-rose-400 transition-all group"
-          >
-            <LogOut size={18} className="group-hover:scale-110 transition-transform" />
-            <span className="font-bold text-[11px] uppercase tracking-wider">Bloquear Sistema</span>
-          </button>
-        </div>
-      </aside>
+      {/* Sidebar Lateral Moderna */}
+      <Sidebar
+        activeTab={activeTab}
+        onNavigate={handleNavigate}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
+        onLogout={handleLogout}
+        companyName={companyNameSys}
+        customLogo={customLogo}
+        customColor={customColor}
+      />
 
       {/* Conteúdo Principal */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
@@ -377,43 +263,6 @@ export default function App() {
         </nav>
       </main>
     </div>
-  );
-}
-
-function NavItem({ 
-  icon, 
-  label, 
-  active, 
-  onClick, 
-  collapsed 
-}: { 
-  icon: ReactNode; 
-  label: string; 
-  active: boolean; 
-  onClick: () => void; 
-  collapsed?: boolean; 
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200 group relative ${
-        active 
-          ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20' 
-          : 'text-slate-400 hover:bg-white/5 hover:text-white'
-      }`}
-      title={collapsed ? label : undefined}
-    >
-      <div className="shrink-0">{icon}</div>
-      <span className={`font-bold text-sm tracking-tight truncate transition-all duration-300 ${collapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'}`}>
-        {label}
-      </span>
-      {active && !collapsed && (
-        <motion.div 
-          layoutId="activeIndicator"
-          className="ml-auto w-1.5 h-1.5 rounded-full bg-white"
-        />
-      )}
-    </button>
   );
 }
 
